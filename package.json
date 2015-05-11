@@ -1,0 +1,14 @@
+{
+	"schema_version": "1.0",
+	"name" : "chrono",
+	"label": "Chrono",
+	"version": "1.0.0",
+	"types": [
+		"plugin"
+	],
+	"paths": {
+		"system": [
+			"system/expressionengine/third_party/chrono"
+		]
+	}
+}
