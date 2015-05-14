@@ -82,8 +82,6 @@ class Chrono
 			return false;
 		}
 
-		var_dump($this->formatVars($yearsMonths)[0]); die;
-
 		// Format the vars and return the parsed variables
 		return ee()->TMPL->parse_variables(
 			ee()->TMPL->tagdata,
