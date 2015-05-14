@@ -18,8 +18,9 @@ class Chrono_model extends CI_Model
 	 *     @var false|int|array $channelId
 	 *     @var false|int|array $authorId
 	 *     @var false|int|array $catId
-	 *     @var false|string $ySort Sort year "asc" or "desc"
-	 *     @var false|string $mSort Sort month(s) "asc" or "desc"
+	 *     @var false|int $limit
+	 *     @var string $ySort Sort year "asc" or "desc"
+	 *     @var string $mSort Sort month(s) "asc" or "desc"
 	 *     @var bool $expired
 	 *     @var bool $futureEntries
 	 *     @var false|string|array $status
@@ -33,8 +34,9 @@ class Chrono_model extends CI_Model
 			'channelId' => false,
 			'authorId' => false,
 			'catId' => false,
-			'ySort' => false,
-			'mSort' => false,
+			'limit' => false,
+			'ySort' => 'desc',
+			'mSort' => 'asc',
 			'expired' => false,
 			'futureEntries' => false,
 			'status' => false,
@@ -43,8 +45,40 @@ class Chrono_model extends CI_Model
 
 		$conf = array_merge($defaultConf, $conf);
 
-		ee()->db->select('CT.entry_date')
-			->from('channel_titles CT');
+		// Make sure sorting parameters are correct
+		$sorting = array(
+			'asc',
+			'desc'
+		);
+
+		if (! in_array($conf['ySort'], $sorting)) {
+			$conf['ySort'] = 'desc';
+		}
+
+		if (! in_array($conf['mSort'], $sorting)) {
+			$conf['mSort'] = 'asc';
+		}
+
+		$select = array(
+			'FROM_UNIXTIME(entry_date, "%Y") AS year',
+			'FROM_UNIXTIME(entry_date, "%c") AS short_digit',
+			'FROM_UNIXTIME(entry_date, "%m") AS two_digit',
+			'FROM_UNIXTIME(entry_date, "%b") AS short',
+			'FROM_UNIXTIME(entry_date, "%M") AS "long"',
+			'COUNT(*) AS month_total_entries'
+		);
+
+		$groupBy = array(
+			'year',
+			'two_digit'
+		);
+
+		ee()->db->select($select)
+			->from('channel_titles CT')
+			->group_by($groupBy)
+			->order_by(
+				'year ' . $conf['ySort'] . ', two_digit ' . $conf['mSort']
+			);
 
 		if ($conf['channelId']) {
 			ee()->db->where_in('CT.channel_id', $conf['channelId']);
@@ -80,16 +114,10 @@ class Chrono_model extends CI_Model
 			ee()->db->where('status', 'open');
 		}
 
-		$query = ee()->db
-			->order_by('CT.entry_date', 'desc')
-			->get()
-			->result_array();
+		// Run the query
+		$query = ee()->db->get()->result_array();
 
-		return $this->formatResults(
-			$query,
-			$conf['ySort'],
-			$conf['mSort']
-		);
+		return $this->formatResults($query, $conf['limit']);
 	}
 
 	/**
@@ -97,61 +125,45 @@ class Chrono_model extends CI_Model
 	 *
 	 * @access private
 	 * @param array $rawResults
-	 * @param false|string $ySort "asc" or "desc"
-	 * @param false|string $mSort "asc" or "desc"
+	 * @param false|int $limit
 	 * @return array
 	 */
-	private function formatResults($rawResults, $ySort, $mSort)
+	private function formatResults($rawResults, $limit)
 	{
-		$returnData = array();
+		$return = array();
+		$yearCount = 0;
 
-		// Loop over the raw results
-		foreach ($rawResults as $key => $val) {
-			// Format the dates and explode into something usable
-			$date = ee()->localize->format_date(
-				'%Y|%F|%M|%m|%n',
-				$val['entry_date']
-			);
-			$date = explode('|', $date);
+		// Loop through the results
+		foreach ($rawResults as $val) {
+			$entryCount = (int) $val['month_total_entries'];
+			$year = $val['year'];
+			$yearIsSet = isset($return[$year]);
 
-			// Set total entries for each year
-			if (! isset($returnData[$date[0]]['year_total_entries'])) {
-				$returnData[$date[0]]['year_total_entries'] = 1;
+			// Remove the year from the value
+			unset($val['year']);
+
+			// If this is a new year, increment the year count
+			if (! $yearIsSet) {
+				$yearCount++;
+			}
+
+			// If the year count is greater than the limit, break loop
+			if ($limit && $yearCount > $limit) {
+				break;
+			}
+
+			// Add up the entry count of months to get total year count
+			if (isset($return[$year])) {
+				$prevCount = $return[$year]['year_total_entries'];
+				$return[$year]['year_total_entries'] = $prevCount + $entryCount;
 			} else {
-				$returnData[$date[0]]['year_total_entries']++;
+				$return[$year]['year_total_entries'] = $entryCount;
 			}
 
-			// Populate the month if it doesn't exist
-			if (! isset($returnData[$date[0]]['months'][$date[4]])) {
-				$thisMonth = array(
-					'short_digit' => $date[4],
-					'two_digit' => $date[3],
-					'short' => $date[2],
-					'long' => $date[1]
-				);
-
-				$returnData[$date[0]]['months'][$date[4]] = $thisMonth;
-			}
-
-			// Add up the total entries for each month
-			if (! isset($returnData[$date[0]]['months'][$date[4]]['month_total_entries'])) {
-				$returnData[$date[0]]['months'][$date[4]]['month_total_entries'] = 1;
-			} else {
-				$returnData[$date[0]]['months'][$date[4]]['month_total_entries']++;
-			}
+			// Set to return value
+			$return[$year]['months'][$val['short_digit']] = $val;
 		}
 
-		// Sort the variables
-		if ($ySort === 'asc') {
-			$returnData = array_reverse($returnData, true);
-		}
-
-		if ($mSort === 'asc') {
-			foreach ($returnData as $key => $val) {
-				$returnData[$key] = array_reverse($val, true);
-			}
-		}
-
-		return $returnData;
+		return $return;
 	}
 }

@@ -11,7 +11,7 @@
 
 $plugin_info = array (
 	'pi_name' => 'Chrono',
-	'pi_version' => '1.0.0',
+	'pi_version' => '1.1.0',
 	'pi_author' => 'TJ Draper',
 	'pi_author_url' => 'https://www.caddis.co',
 	'pi_description' => 'Get years and months of channel entries',
@@ -33,6 +33,8 @@ class Chrono
 
 		$catId = $this->getParam('category_id');
 		$this->catId = $catId ? explode('|', $catId) : false;
+
+		$this->limit = (int) $this->getParam('limit');
 
 		$this->ySort = $this->getParam('year_sort') === 'asc' ? 'asc' : 'desc';
 		$this->mSort = $this->getParam('month_sort') === 'asc' ? 'asc' : 'desc';
@@ -67,6 +69,7 @@ class Chrono
 			'channelId' => $this->channelId,
 			'authorId' => $this->authId,
 			'catId' => $this->catId,
+			'limit' => $this->limit,
 			'ySort' => $this->ySort,
 			'mSort' => $this->mSort,
 			'expired' => $this->expired,
@@ -74,6 +77,12 @@ class Chrono
 			'status' => $this->status,
 			'negateStatus' => $this->negateStatus
 		));
+
+		if (! $yearsMonths) {
+			return false;
+		}
+
+		var_dump($this->formatVars($yearsMonths)[0]); die;
 
 		// Format the vars and return the parsed variables
 		return ee()->TMPL->parse_variables(

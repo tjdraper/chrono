@@ -1,4 +1,4 @@
-# Chrono 1.0.0 for ExpressionEngine
+# Chrono 1.1.0 for ExpressionEngine
 
 Get years and months of channel entries.
 
@@ -7,6 +7,7 @@ Get years and months of channel entries.
     {exp:chrono:archive
         channel_id="8"
         category_id="2430"
+        limit="4"
     }
         {chrono:year}
         {chrono:year_count}
@@ -19,6 +20,7 @@ Get years and months of channel entries.
             {chrono:short}
             {chrono:long}
             {chrono:month_count}
+            {chrono:month_total_entries}
         {/chrono:months}
     {exp:chrono:archive}
 
@@ -35,6 +37,10 @@ Defaults to all authors
 #### `category_id="44|2"`
 
 Defaults to all categories
+
+#### `limit="4"`
+
+Defaults to false (no limit)
 
 #### `year_sort="asc"`
 
