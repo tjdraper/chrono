@@ -1,4 +1,4 @@
-# Chrono 1.1.0 for ExpressionEngine
+# Chrono 2.0.0 for ExpressionEngine
 
 Get years and months of channel entries.
 
