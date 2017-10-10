@@ -124,7 +124,7 @@ The total number of entries for the month based on your tag parameters.
 
 ## License
 
-Copyright 2015 Caddis Interactive, LLC
+Copyright 2017 BuzzingPixel, LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
