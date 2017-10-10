@@ -1,149 +1,183 @@
-<?php if (! defined('BASEPATH')) exit('No direct script access allowed');
+<?php
 
 /**
- * Chrono plugin
- *
- * @package chrono
  * @author TJ Draper <tj@buzzingpixel.com>
- * @link https://github.com/tjdraper/chrono
- * @copyright Copyright (c) 2017 BuzzingPixel, LLC
+ * @copyright 2017 BuzzingPixel, LLC
+ * @license Apache-2.0
  */
 
+/**
+ * Class Chrono
+ */
 class Chrono
 {
-	public function __construct()
-	{
-		ee()->load->model('chrono_model');
+    /** @var array|bool $channelId */
+    private $channelId;
 
-		// Get parameters
-		$channelId = $this->getParam('channel_id');
-		$this->channelId = $channelId ? explode('|', $channelId) : false;
+    /** @var array|bool $authId */
+    private $authId;
 
-		$authId = $this->getParam('author_id');
-		$this->authId = $authId ? explode('|', $authId) : false;
+    /** @var array|bool $catId */
+    private $catId;
 
-		$catId = $this->getParam('category_id');
-		$this->catId = $catId ? explode('|', $catId) : false;
+    /** @var int $limit */
+    private $limit;
 
-		$this->limit = (int) $this->getParam('limit');
+    /** @var string $mSort */
+    private $mSort;
 
-		$this->ySort = $this->getParam('year_sort') === 'asc' ? 'asc' : 'desc';
-		$this->mSort = $this->getParam('month_sort') === 'asc' ? 'asc' : 'desc';
+    /** @var string $ySort */
+    private $ySort;
 
-		$expired = $this->getParam('show_expired');
-		$this->expired = $expired === 'true' || $expired === 'yes';
+    /** @var bool $expired */
+    private $expired;
 
-		$futureEntries = $this->getParam('show_future_entries');
-		$this->futureEntries = $futureEntries === 'true' || $futureEntries === 'yes';
+    /** @var bool $futureEntries */
+    private $futureEntries;
 
-		$this->namespace = $this->getParam('namespace', 'chrono') . ':';
+    /** @var string $namespace */
+    private $namespace;
 
-		$status = $this->getParam('status', 'open');
-		$this->negateStatus = substr($status, 0, 4) === 'not ';
+    /** @var bool $negateStatus */
+    private $negateStatus;
 
-		if ($this->negateStatus === true) {
-			$status = substr($status, 4);
-		}
+    /** @var array $status */
+    private $status;
 
-		$this->status = explode('|', $status);
-	}
+    /**
+     * Chrono constructor
+     */
+    public function __construct()
+    {
+        ee()->load->model('chrono_model');
 
-	/**
-	 * Process the archive tag pair
-	 *
-	 * @return string
-	 */
-	public function archive()
-	{
-		// Get the years and months from the model
-		$yearsMonths = ee()->chrono_model->getYearsMonths(array(
-			'channelId' => $this->channelId,
-			'authorId' => $this->authId,
-			'catId' => $this->catId,
-			'limit' => $this->limit,
-			'ySort' => $this->ySort,
-			'mSort' => $this->mSort,
-			'expired' => $this->expired,
-			'futureEntries' => $this->futureEntries,
-			'status' => $this->status,
-			'negateStatus' => $this->negateStatus
-		));
+        // Get parameters
+        $channelId = $this->getParam('channel_id');
+        $this->channelId = $channelId ? explode('|', $channelId) : false;
 
-		if (! $yearsMonths) {
-			return false;
-		}
+        $authId = $this->getParam('author_id');
+        $this->authId = $authId ? explode('|', $authId) : false;
 
-		// Format the vars and return the parsed variables
-		return ee()->TMPL->parse_variables(
-			ee()->TMPL->tagdata,
-			$this->formatVars($yearsMonths)
-		);
-	}
+        $catId = $this->getParam('category_id');
+        $this->catId = $catId ? explode('|', $catId) : false;
 
-	/**
-	 * Fetch tag parameter
-	 *
-	 * @access private
-	 * @return string|bool String or param not set returns (bool) false
-	 */
-	private function getParam($param = false, $default = false)
-	{
-		if (! $param) {
-			return false;
-		}
+        $this->limit = (int) $this->getParam('limit');
 
-		return ee()->TMPL->fetch_param($param, $default);
-	}
+        $this->ySort = $this->getParam('year_sort') === 'asc' ? 'asc' : 'desc';
+        $this->mSort = $this->getParam('month_sort') === 'asc' ? 'asc' : 'desc';
 
-	/**
-	 * Format Variables
-	 *
-	 * @access private
-	 * @return array
-	 */
-	private function formatVars($yearsMonths)
-	{
-		$returnData = array();
-		$yearKey = 0;
+        $expired = $this->getParam('show_expired');
+        $this->expired = $expired === 'true' || $expired === 'yes';
 
-		// Loop through the years
-		foreach ($yearsMonths as $yKey => $yVal) {
-			$returnData[$yearKey][$this->namespace . 'year'] = $yKey;
-			$returnData[$yearKey][$this->namespace . 'year_count'] = $yearKey + 1;
-			$returnData[$yearKey][$this->namespace . 'year_total_entries'] = $yVal['year_total_entries'];
+        $futureEntries = $this->getParam('show_future_entries');
+        $this->futureEntries = $futureEntries === 'true' || $futureEntries === 'yes';
 
-			$monthKey = 0;
+        $this->namespace = $this->getParam('namespace', 'chrono') . ':';
 
-			// Loop through the months
-			foreach ($yVal['months'] as $mKey => $mVal) {
-				$month = array(
-					$this->namespace . 'short_digit' => $mVal['short_digit'],
-					$this->namespace . 'two_digit' => $mVal['two_digit'],
-					$this->namespace . 'short' => $mVal['short'],
-					$this->namespace . 'long' => $mVal['long'],
-					$this->namespace . 'month_count' => $monthKey + 1,
-					$this->namespace . 'month_total_entries' => $mVal['month_total_entries']
-				);
+        $status = $this->getParam('status', 'open');
+        $this->negateStatus = substr($status, 0, 4) === 'not ';
 
-				$returnData[$yearKey][$this->namespace . 'months'][$monthKey] = $month;
+        if ($this->negateStatus === true) {
+            $status = substr($status, 4);
+        }
 
-				$monthKey++;
-			}
+        $this->status = explode('|', $status);
+    }
 
-			$yearKey++;
-		}
+    /**
+     * Process the archive tag pair
+     * @return string
+     */
+    public function archive()
+    {
+        // Get the years and months from the model
+        $yearsMonths = ee()->chrono_model->getYearsMonths(array(
+            'channelId' => $this->channelId,
+            'authorId' => $this->authId,
+            'catId' => $this->catId,
+            'limit' => $this->limit,
+            'ySort' => $this->ySort,
+            'mSort' => $this->mSort,
+            'expired' => $this->expired,
+            'futureEntries' => $this->futureEntries,
+            'status' => $this->status,
+            'negateStatus' => $this->negateStatus
+        ));
 
-		// Get the year total
-		$yearTotal = count($returnData);
+        if (! $yearsMonths) {
+            return false;
+        }
 
-		// Set the year and month totals
-		foreach ($returnData as $key => $val) {
-			$returnData[$key][$this->namespace . 'year_total'] = $yearTotal;
+        // Format the vars and return the parsed variables
+        return ee()->TMPL->parse_variables(
+            ee()->TMPL->tagdata,
+            $this->formatVars($yearsMonths)
+        );
+    }
 
-			$monthCount = count($val[$this->namespace . 'months']);
-			$returnData[$key][$this->namespace . 'month_total'] = $monthCount;
-		}
+    /**
+     * Fetch tag parameter
+     * @param string|bool $param
+     * @param mixed
+     * @return string|bool String or param not set returns (bool) false
+     */
+    private function getParam($param = false, $default = false)
+    {
+        if (! $param) {
+            return false;
+        }
 
-		return $returnData;
-	}
+        return ee()->TMPL->fetch_param($param, $default);
+    }
+
+    /**
+     * Format Variables
+     * @param array $yearsMonths
+     * @return array
+     */
+    private function formatVars($yearsMonths)
+    {
+        $returnData = array();
+        $yearKey = 0;
+
+        // Loop through the years
+        foreach ($yearsMonths as $yKey => $yVal) {
+            $returnData[$yearKey][$this->namespace . 'year'] = $yKey;
+            $returnData[$yearKey][$this->namespace . 'year_count'] = $yearKey + 1;
+            $returnData[$yearKey][$this->namespace . 'year_total_entries'] = $yVal['year_total_entries'];
+
+            $monthKey = 0;
+
+            // Loop through the months
+            foreach ($yVal['months'] as $mKey => $mVal) {
+                $month = array(
+                    $this->namespace . 'short_digit' => $mVal['short_digit'],
+                    $this->namespace . 'two_digit' => $mVal['two_digit'],
+                    $this->namespace . 'short' => $mVal['short'],
+                    $this->namespace . 'long' => $mVal['long'],
+                    $this->namespace . 'month_count' => $monthKey + 1,
+                    $this->namespace . 'month_total_entries' => $mVal['month_total_entries']
+                );
+
+                $returnData[$yearKey][$this->namespace . 'months'][$monthKey] = $month;
+
+                $monthKey++;
+            }
+
+            $yearKey++;
+        }
+
+        // Get the year total
+        $yearTotal = count($returnData);
+
+        // Set the year and month totals
+        foreach ($returnData as $key => $val) {
+            $returnData[$key][$this->namespace . 'year_total'] = $yearTotal;
+
+            $monthCount = count($val[$this->namespace . 'months']);
+            $returnData[$key][$this->namespace . 'month_total'] = $monthCount;
+        }
+
+        return $returnData;
+    }
 }
